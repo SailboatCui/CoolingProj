@@ -12,8 +12,8 @@
 <stringAttribute key="com.ti.ccstudio.debug.debugModel.ATTR_PROJECT.TMS320F28377D.ccxml.Texas Instruments XDS100v2 USB Debug Probe_0/C28xx_CPU1" value="CoolingProj_v2"/>
 <stringAttribute key="com.ti.ccstudio.debug.debugModel.ATTR_PROJECT.TMS320F28377D.ccxml.Texas Instruments XDS100v2 USB Debug Probe_0/C28xx_CPU2" value="CoolingProj_v2"/>
 <stringAttribute key="com.ti.ccstudio.debug.debugModel.ATTR_TARGET_CONFIG" value="${target_config_active_default:CoolingProj_v2}"/>
-<stringAttribute key="com.ti.ccstudio.debug.debugModel.MRU_PROGRAM.TMS320F28377D.ccxml.Texas Instruments XDS100v2 USB Debug Probe_0/C28xx_CPU1" value="C:\Users\richa\workspace_v10\CoolingProj_v2\CPU1_FLASH\CoolingProj_v2.out"/>
-<stringAttribute key="com.ti.ccstudio.debug.debugModel.MRU_PROGRAM.TMS320F28377D.ccxml.Texas Instruments XDS100v2 USB Debug Probe_0/C28xx_CPU2" value="C:\Users\richa\workspace_v10\CoolingProj_v2\CPU1_FLASH\CoolingProj_v2.out"/>
+<stringAttribute key="com.ti.ccstudio.debug.debugModel.MRU_PROGRAM.TMS320F28377D.ccxml.Texas Instruments XDS100v2 USB Debug Probe_0/C28xx_CPU1" value="C:\Users\richa\Google Drive\Github\CoolingProj\CPU1_RAM\CoolingProj_v2.out"/>
+<stringAttribute key="com.ti.ccstudio.debug.debugModel.MRU_PROGRAM.TMS320F28377D.ccxml.Texas Instruments XDS100v2 USB Debug Probe_0/C28xx_CPU2" value="C:\Users\richa\Google Drive\Github\CoolingProj\CPU1_RAM\CoolingProj_v2.out"/>
 <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
 <listEntry value="/CoolingProj_v2"/>
 </listAttribute>

@@ -54,8 +54,12 @@ typedef struct
 }epwmInformation;
 
 //
+// Globals
+volatile uint16_t sData[2];         // Send data buffer
+volatile uint16_t rData[2];         // Receive data buffer
+volatile uint16_t rDataPoint = 0;   // To keep track of where we are in the
+                                    // data stream to check received data
 // Globals to hold the ePWM information used in this example
-//
 epwmInformation epwm1Info;
 epwmInformation epwm2Info;
 epwmInformation epwm3Info;
@@ -67,7 +71,12 @@ void initEPWM(uint32_t base, epwmInformation *epwmInfo);
 __interrupt void epwm1ISR(void);
 __interrupt void epwm2ISR(void);
 __interrupt void epwm3ISR(void);
+__interrupt void epwm4ISR(void);
 void InitEPWMInfox(epwmInformation *epwmInfo, float Frequency, float DutyRatio, float Offset);
+void initSPIA(void);
+void initSPIB(void);
+__interrupt void spiRxFIFOISR(void);
+void configGPIOs(void);
 //
 // Main
 //
@@ -92,7 +101,8 @@ void main(void)
             memcpy(&RamfuncsRunStart, &RamfuncsLoadStart, (size_t)&RamfuncsLoadSize);
         #endif
         //
-    //
+    uint16_t i;
+
     // Initialize device clock and peripherals
     // Note that SYSCLK is set to be 100MHz, not the 200MHz as expected!
     Device_init();
@@ -113,36 +123,31 @@ void main(void)
     //
     Interrupt_initVectorTable();
 
+    // Interrupts that are used in this example are re-mapped to ISR functions
+    // found within this file.
+    //
+//    Interrupt_register(INT_SPIA_TX, &spiTxFIFOISR);
+    Interrupt_register(INT_SPIA_RX, &spiRxFIFOISR);
+
+    //
+    // Set up SPI
+    //
+    initSPIA();  // initializing SPIA for FIFO mode
+    initSPIB();  // initializing SPIB for FIFO mode
+
+    // Initialize the data buffers
+    //
+    for(i = 0; i < 2; i++)
+    {
+        sData[i] = 1;
+        rData[i]= 0;
+    }
     //
     // Assign the interrupt service routines to ePWM interrupts
     //
-//    Interrupt_register(INT_EPWM1, &epwm1ISR);
+      Interrupt_register(INT_EPWM1, &epwm1ISR);
 //    Interrupt_register(INT_EPWM2, &epwm2ISR);
 //    Interrupt_register(INT_EPWM3, &epwm3ISR);
-
-    //
-    // Configure GPIO0/1 , GPIO2/3, GPIO4/5, GPIO6/7 and as ePWM1A/1B, ePWM2A/2B,
-    // ePWM3A/3B, ePWM4A/4B pins respectively
-    //
-    GPIO_setPadConfig(0, GPIO_PIN_TYPE_STD);
-    GPIO_setPinConfig(GPIO_0_EPWM1A);
-    GPIO_setPadConfig(1, GPIO_PIN_TYPE_STD);
-    GPIO_setPinConfig(GPIO_1_EPWM1B);
-
-    GPIO_setPadConfig(2, GPIO_PIN_TYPE_STD);
-    GPIO_setPinConfig(GPIO_2_EPWM2A);
-    GPIO_setPadConfig(3, GPIO_PIN_TYPE_STD);
-    GPIO_setPinConfig(GPIO_3_EPWM2B);
-
-    GPIO_setPadConfig(4, GPIO_PIN_TYPE_STD);
-    GPIO_setPinConfig(GPIO_4_EPWM3A);
-    GPIO_setPadConfig(5, GPIO_PIN_TYPE_STD);
-    GPIO_setPinConfig(GPIO_5_EPWM3B);
-
-    GPIO_setPadConfig(6, GPIO_PIN_TYPE_STD);
-    GPIO_setPinConfig(GPIO_6_EPWM4A);
-    GPIO_setPadConfig(7, GPIO_PIN_TYPE_STD);
-    GPIO_setPinConfig(GPIO_7_EPWM4B);
 
     InitEPWMInfox(&epwm1Info, Frequencyx, DutyRatio1x, Offset1x);
     InitEPWMInfox(&epwm2Info, Frequencyx, DutyRatio2x, Offset2x);
@@ -214,8 +219,13 @@ void main(void)
 //    Interrupt_enable(INT_EPWM1);
 //    Interrupt_enable(INT_EPWM2);
 //    Interrupt_enable(INT_EPWM3);
+//    Interrupt_enable(INT_EPWM4);
 
-    //
+    // Enable the SPIA Rx interrupt
+//    Interrupt_enable(INT_SPIA_TX);
+//   Interrupt_enable(INT_SPIA_RX);
+
+
     // Enable Global Interrupt (INTM) and realtime interrupt (DBGM)
     //
     EINT;
@@ -235,11 +245,20 @@ void main(void)
 //
 __interrupt void epwm1ISR(void)
 {
-    //
-    // Update the CMPA and CMPB values
-    //
-    //updateCompare(&epwm1Info);
-
+      // SPI B Transmit data in EPWM interrupt
+      uint16_t i;
+      // Send data
+      //
+      for(i = 0; i < 2; i++)
+      {
+         SPI_writeDataNonBlocking(SPIB_BASE, sData[i]);
+      }
+      // Increment data for next cycle
+      //
+      for(i = 0; i < 2; i++)
+      {
+         sData[i] = 1;
+      }
     //
     // Clear INT flag for this timer
     //
@@ -292,9 +311,165 @@ __interrupt void epwm3ISR(void)
     //
     Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP3);
 }
+// epwm4ISR - ePWM 4 ISR
+//
+__interrupt void epwm4ISR(void)
+{
+    //
+    // Update the CMPA and CMPB values
+    //
+    //updateCompare(&epwm3Info);
+
+    //
+    // Clear INT flag for this timer
+    //
+    EPWM_clearEventTriggerInterruptFlag(EPWM4_BASE);
+
+    //
+    // Acknowledge interrupt group
+    //
+    Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP3);
+}
+
+// SPI A Receive FIFO ISR
+//
+ __interrupt void spiRxFIFOISR(void)
+{
+    uint16_t i;
+    //
+    // Read data
+    //
+    for(i = 0; i < 2; i++)
+    {
+        rData[i] = SPI_readDataNonBlocking(SPIA_BASE);
+    }
+
+    //
+    // Check received data
+    //
+    for(i = 0; i < 2; i++)
+    {
+        if(rData[i] != (rDataPoint + i))
+        {
+            // Something went wrong. rData doesn't contain expected data.
+            Example_Fail = 1;
+            ESTOP0;
+        }
+    }
+
+    rDataPoint++;
+
+    //
+    // Clear interrupt flag and issue ACK
+    //
+    SPI_clearInterruptStatus(SPIA_BASE, SPI_INT_RXFF);
+    Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP6);
+
+    Example_PassCount++;
+}
+
+// Configure GPIOs for external loopback.
+//
+void configGPIOs(void)
+{
+    //
+       // Configure GPIO0/1 , GPIO2/3, GPIO4/5, GPIO6/7 and as ePWM1A/1B, ePWM2A/2B,
+       // ePWM3A/3B, ePWM4A/4B pins respectively
+       //
+       GPIO_setPadConfig(0, GPIO_PIN_TYPE_STD);
+       GPIO_setPinConfig(GPIO_0_EPWM1A);
+       GPIO_setPadConfig(1, GPIO_PIN_TYPE_STD);
+       GPIO_setPinConfig(GPIO_1_EPWM1B);
+
+       GPIO_setPadConfig(2, GPIO_PIN_TYPE_STD);
+       GPIO_setPinConfig(GPIO_2_EPWM2A);
+       GPIO_setPadConfig(3, GPIO_PIN_TYPE_STD);
+       GPIO_setPinConfig(GPIO_3_EPWM2B);
+
+       GPIO_setPadConfig(4, GPIO_PIN_TYPE_STD);
+       GPIO_setPinConfig(GPIO_4_EPWM3A);
+       GPIO_setPadConfig(5, GPIO_PIN_TYPE_STD);
+       GPIO_setPinConfig(GPIO_5_EPWM3B);
+
+       GPIO_setPadConfig(6, GPIO_PIN_TYPE_STD);
+       GPIO_setPinConfig(GPIO_6_EPWM4A);
+       GPIO_setPadConfig(7, GPIO_PIN_TYPE_STD);
+       GPIO_setPinConfig(GPIO_7_EPWM4B);
+    //
+    // This test is designed for an external loopback between SPIA master
+    // and SPIB slave
+    // External Connections:
+    // -GPIO58 -> GPIO63 - SPISIMOA -> SPISIMOB
+    // -GPIO59 <- GPIO64 - SPISOMIA <- SPISOMIB
+    // -GPIO1 (EPWM1#)-> GPIO66 - CS of SPISTEB, THE CHIP SELECTION OF B
+    // -GPIO60 and GPIO65 - SPIACLK -  SPIBCLK
+    //
+    // GPIO59 is the SPISOMIA.
+    //
+    GPIO_setMasterCore(59, GPIO_CORE_CPU1);
+    GPIO_setPinConfig(GPIO_59_SPISOMIA);
+    GPIO_setPadConfig(59, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setQualificationMode(59, GPIO_QUAL_ASYNC);
+
+    //
+    // GPIO58 is the SPISIMOA clock pin.
+    //
+    GPIO_setMasterCore(58, GPIO_CORE_CPU1);
+    GPIO_setPinConfig(GPIO_58_SPISIMOA);
+    GPIO_setPadConfig(58, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setQualificationMode(58, GPIO_QUAL_ASYNC);
+
+    //
+    // A is master, so we donot need to set SPISTEA.
+//    GPIO_setMasterCore(19, GPIO_CORE_CPU1);
+//    GPIO_setPinConfig(GPIO_19_SPISTEA);
+//    GPIO_setPadConfig(19, GPIO_PIN_TYPE_PULLUP);
+//    GPIO_setQualificationMode(19, GPIO_QUAL_ASYNC);
+
+    //
+    // GPIO60 is the SPICLKA.
+    //
+    GPIO_setMasterCore(60, GPIO_CORE_CPU1);
+    GPIO_setPinConfig(GPIO_60_SPICLKA);
+    GPIO_setPadConfig(60, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setQualificationMode(60, GPIO_QUAL_ASYNC);
+
+    //
+    // GPIO64 is the SPISOMIB.
+    //
+    GPIO_setMasterCore(64, GPIO_CORE_CPU1);
+    GPIO_setPinConfig(GPIO_64_SPISOMIB);
+    GPIO_setPadConfig(64, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setQualificationMode(64, GPIO_QUAL_ASYNC);
+
+    //
+    // GPIO63 is the SPISIMOB clock pin.
+    //
+    GPIO_setMasterCore(63, GPIO_CORE_CPU1);
+    GPIO_setPinConfig(GPIO_63_SPISIMOB);
+    GPIO_setPadConfig(63, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setQualificationMode(63, GPIO_QUAL_ASYNC);
+
+    //
+    // we the GPIO66 is the SPISTEB.
+    //
+    GPIO_setMasterCore(66, GPIO_CORE_CPU1);
+    GPIO_setPinConfig(GPIO_66_SPISTEB);
+    GPIO_setPadConfig(66, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setQualificationMode(66, GPIO_QUAL_ASYNC);
+
+    //
+    // GPIO65 is the SPICLKB.
+    //
+    GPIO_setMasterCore(65, GPIO_CORE_CPU1);
+    GPIO_setPinConfig(GPIO_65_SPICLKB);
+    GPIO_setPadConfig(65, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setQualificationMode(65, GPIO_QUAL_ASYNC);
+}
+
 
 //
-// initEPWM1 - Configure ePWM1
+// initEPWMx - Configure ePWMx
 //
 void initEPWM(uint32_t base, epwmInformation *epwmInfo)
 {
@@ -317,7 +492,6 @@ void initEPWM(uint32_t base, epwmInformation *epwmInfo)
                                 EPWM_COUNTER_COMPARE_B,
                                 epwmInfo->epwmCompBctx);
 
-    //
     // Set up counter mode
     //
     EPWM_setTimeBaseCounterMode(base, EPWM_COUNTER_MODE_UP);
@@ -339,7 +513,6 @@ void initEPWM(uint32_t base, epwmInformation *epwmInfo)
                                          EPWM_COUNTER_COMPARE_B,
                                          EPWM_COMP_LOAD_ON_CNTR_ZERO);
 
-    //
     // Set actions
     // EPWMxA is set 1 when counter == 0
     EPWM_setActionQualifierAction(base,
@@ -361,6 +534,14 @@ void initEPWM(uint32_t base, epwmInformation *epwmInfo)
                                   EPWM_AQ_OUTPUT_B,
                                   EPWM_AQ_OUTPUT_HIGH,
                                   EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPB);
+
+    // Interrupts
+    // Select INT on Time base counter zero event,
+    // Enable INT, generate INT on 1rd event
+    //
+    EPWM_setInterruptSource(base, EPWM_INT_TBCTR_ZERO);
+    EPWM_enableInterrupt(base);
+    EPWM_setInterruptEventCount(base, 1U);
 }
 
 void InitEPWMInfox(epwmInformation *epwmInfo, float Frequency, float DutyRatio, float Offset)
@@ -371,3 +552,41 @@ void InitEPWMInfox(epwmInformation *epwmInfo, float Frequency, float DutyRatio, 
     epwmInfo->epwmCompBctx = (5000/Frequency)*DutyRatio;
 }
 
+// Function to configure SPI A as master with FIFO enabled, SPIA receives the data from the SPIB
+//
+void initSPIA(void)
+{
+    //
+    // Must put SPI into reset before configuring it
+    //
+    SPI_disableModule(SPIA_BASE);
+    // SPI configuration. Use a 500kHz SPICLK and 16-bit word size.
+    //
+    SPI_setConfig(SPIA_BASE, DEVICE_LSPCLK_FREQ, SPI_PROT_POL0PHA0,    //! Mode 0. Polarity 0, phase 0. Rising edge without delay.
+                  SPI_MODE_MASTER, 1000000, 16);
+    SPI_disableLoopback(SPIA_BASE);
+    SPI_setEmulationMode(SPIA_BASE, SPI_EMULATION_FREE_RUN);
+    //
+    // FIFO and interrupt configuration
+    SPI_enableFIFO(SPIA_BASE);
+    SPI_clearInterruptStatus(SPIA_BASE, SPI_INT_RXFF);
+    SPI_setFIFOInterruptLevel(SPIA_BASE, SPI_FIFO_TX2, SPI_FIFO_RX2);   // interrupt happen when the FIFO level =2
+    SPI_enableInterrupt(SPIA_BASE, SPI_INT_RXFF);
+
+    //
+    // Configuration complete. Enable the module.
+    //
+    SPI_enableModule(SPIA_BASE);
+}
+
+// Function to configure SPI B as slave with FIFO enabled, SPIA receives the data from the SPIB
+void initSPIB(void)
+{
+    //mySPI0 initialization
+    SPI_disableModule(SPIB_BASE);
+    SPI_setConfig(SPIB_BASE, DEVICE_LSPCLK_FREQ, SPI_PROT_POL0PHA0,
+                  SPI_MODE_SLAVE, 1000000, 16);
+    SPI_disableLoopback(SPIB_BASE);
+    SPI_setEmulationMode(SPIB_BASE, SPI_EMULATION_FREE_RUN);
+    SPI_enableModule(SPIB_BASE);
+}
