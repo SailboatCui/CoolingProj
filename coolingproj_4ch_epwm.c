@@ -116,7 +116,7 @@ void main(void)
     //
     // Assign the interrupt service routines to ePWM interrupts
     //
-//    Interrupt_register(INT_EPWM1, &epwm1ISR);
+      Interrupt_register(INT_EPWM1, &epwm1ISR);
 //    Interrupt_register(INT_EPWM2, &epwm2ISR);
 //    Interrupt_register(INT_EPWM3, &epwm3ISR);
 
@@ -211,7 +211,7 @@ void main(void)
     //
     // Enable ePWM interrupts
     //
-//    Interrupt_enable(INT_EPWM1);
+      Interrupt_enable(INT_EPWM1);
 //    Interrupt_enable(INT_EPWM2);
 //    Interrupt_enable(INT_EPWM3);
 
@@ -361,6 +361,14 @@ void initEPWM(uint32_t base, epwmInformation *epwmInfo)
                                   EPWM_AQ_OUTPUT_B,
                                   EPWM_AQ_OUTPUT_HIGH,
                                   EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPB);
+
+    // Interrupts
+    // Select INT on Time base counter zero event,
+    // Enable INT, generate INT on 1rd event
+    //
+    EPWM_setInterruptSource(base, EPWM_INT_TBCTR_ZERO);
+    EPWM_enableInterrupt(base);
+    EPWM_setInterruptEventCount(base, 1U);
 }
 
 void InitEPWMInfox(epwmInformation *epwmInfo, float Frequency, float DutyRatio, float Offset)
