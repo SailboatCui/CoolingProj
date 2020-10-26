@@ -1,7 +1,7 @@
 # FIXED
 
 coolingproj_4ch_epwm.obj: ../coolingproj_4ch_epwm.c
-coolingproj_4ch_epwm.obj: C:/Users/richa/workspace_v10/CoolingProj_v2/device/driverlib.h
+coolingproj_4ch_epwm.obj: C:/Users/richa/Google\ Drive/Github/CoolingProj/device/driverlib.h
 coolingproj_4ch_epwm.obj: C:/ti/C2000Ware_3_02_00_00_Software/driverlib/f2837xd/driverlib/inc/hw_memmap.h
 coolingproj_4ch_epwm.obj: C:/ti/C2000Ware_3_02_00_00_Software/driverlib/f2837xd/driverlib/adc.h
 coolingproj_4ch_epwm.obj: C:/ti/ccs1010/ccs/tools/compiler/ti-cgt-c2000_20.2.1.LTS/include/stdbool.h
@@ -81,12 +81,12 @@ coolingproj_4ch_epwm.obj: C:/ti/C2000Ware_3_02_00_00_Software/driverlib/f2837xd/
 coolingproj_4ch_epwm.obj: C:/ti/C2000Ware_3_02_00_00_Software/driverlib/f2837xd/driverlib/upp.h
 coolingproj_4ch_epwm.obj: C:/ti/C2000Ware_3_02_00_00_Software/driverlib/f2837xd/driverlib/inc/hw_upp.h
 coolingproj_4ch_epwm.obj: C:/ti/C2000Ware_3_02_00_00_Software/driverlib/f2837xd/driverlib/version.h
-coolingproj_4ch_epwm.obj: C:/Users/richa/workspace_v10/CoolingProj_v2/device/device.h
+coolingproj_4ch_epwm.obj: C:/Users/richa/Google\ Drive/Github/CoolingProj/device/device.h
 coolingproj_4ch_epwm.obj: C:/ti/ccs1010/ccs/tools/compiler/ti-cgt-c2000_20.2.1.LTS/include/stddef.h
 coolingproj_4ch_epwm.obj: ../command.h
 
 ../coolingproj_4ch_epwm.c: 
-C:/Users/richa/workspace_v10/CoolingProj_v2/device/driverlib.h: 
+C:/Users/richa/Google\ Drive/Github/CoolingProj/device/driverlib.h: 
 C:/ti/C2000Ware_3_02_00_00_Software/driverlib/f2837xd/driverlib/inc/hw_memmap.h: 
 C:/ti/C2000Ware_3_02_00_00_Software/driverlib/f2837xd/driverlib/adc.h: 
 C:/ti/ccs1010/ccs/tools/compiler/ti-cgt-c2000_20.2.1.LTS/include/stdbool.h: 
@@ -166,6 +166,6 @@ C:/ti/C2000Ware_3_02_00_00_Software/driverlib/f2837xd/driverlib/inc/hw_spi.h:
 C:/ti/C2000Ware_3_02_00_00_Software/driverlib/f2837xd/driverlib/upp.h: 
 C:/ti/C2000Ware_3_02_00_00_Software/driverlib/f2837xd/driverlib/inc/hw_upp.h: 
 C:/ti/C2000Ware_3_02_00_00_Software/driverlib/f2837xd/driverlib/version.h: 
-C:/Users/richa/workspace_v10/CoolingProj_v2/device/device.h: 
+C:/Users/richa/Google\ Drive/Github/CoolingProj/device/device.h: 
 C:/ti/ccs1010/ccs/tools/compiler/ti-cgt-c2000_20.2.1.LTS/include/stddef.h: 
 ../command.h: 

@@ -57,10 +57,9 @@ typedef struct
 // Globals
 volatile uint16_t sData[2];         // Send data buffer
 volatile uint16_t rData[2];         // Receive data buffer
-volatile uint16_t rDataPoint = 0;   // To keep track of where we are in the
-                                    // data stream to check received data
-volatile uint32_t MrDataPoint = 0;
-volatile uint16_t highbyte = 0, lowbyte = 0;
+volatile uint32_t Adc1Data, Adc2Data, Adc3Data, Adc4Data;
+volatile uint16_t measure_sent_flg = 0; // flag indicating the reading adc command for channel x(1-4) is sent
+volatile uint16_t measure_received_flg = 0; // flag indicating the adc data for channel x(1-4) is received
 // Globals to hold the ePWM information used in this example
 epwmInformation epwm1Info;
 epwmInformation epwm2Info;
@@ -78,7 +77,7 @@ void initSPIA(void);
 void initSPIB(void);
 __interrupt void spiaRxFIFOISR(void);
 void configGPIOs(void);
-void ADCdataPros(void);
+uint32_t ADCdataPros(uint16_t rData[2]);
 // Main
 //
 void main(void)
@@ -129,7 +128,7 @@ void main(void)
     // Assign the interrupt service routines to ePWM interrupts
     //
       Interrupt_register(INT_EPWM1, &epwm1ISR);
-//    Interrupt_register(INT_EPWM2, &epwm2ISR);
+      Interrupt_register(INT_EPWM2, &epwm2ISR);
 //    Interrupt_register(INT_EPWM3, &epwm3ISR);
 
       // Interrupts that are used in this example are re-mapped to ISR functions
@@ -153,14 +152,6 @@ void main(void)
     initSPIB();  // initializing SPIB for FIFO mode
     // Disable sync(Freeze clock to PWM as well)
 
-    // Initialize the data buffers
-    //
-    for(i = 0; i < 2; i++)
-    {
-        sData[i] = 1;
-        rData[i]= 0;
-    }
-    //
     //
     SysCtl_disablePeripheral(SYSCTL_PERIPH_CLK_TBCLKSYNC);
 
@@ -223,7 +214,7 @@ void main(void)
     // Enable ePWM interrupts
     //
       Interrupt_enable(INT_EPWM1);
-//    Interrupt_enable(INT_EPWM2);
+      Interrupt_enable(INT_EPWM2);
 //    Interrupt_enable(INT_EPWM3);
 
       // Enable the SPIA Rx interrupt
@@ -240,8 +231,14 @@ void main(void)
     //
     while(1)
     {
-//        NOP;
-        ADCdataPros();
+        switch (measure_received_flg){
+                case 1:Adc1Data = ADCdataPros(rData);
+                case 2:Adc2Data = ADCdataPros(rData);
+                case 3:Adc3Data = ADCdataPros(rData);
+                case 4:Adc4Data = ADCdataPros(rData);
+                default: ;
+            }
+
     }
 }
 
@@ -252,6 +249,12 @@ __interrupt void epwm1ISR(void)
 {
    // SPI B Transmit data in EPWM interrupt
     uint16_t i;
+
+    measure_sent_flg = 1;
+    for(i = 0; i < 2; i++)
+    {
+       sData[i] = 1;
+    }
     // Send data
     //
     for(i = 0; i < 2; i++)
@@ -259,12 +262,7 @@ __interrupt void epwm1ISR(void)
         SPI_writeDataNonBlocking(SPIB_BASE, sData[i]);
         SPI_writeDataNonBlocking(SPIA_BASE, 1);
     }
-    // Increment data for next cycle
-    //
-    for(i = 0; i < 2; i++)
-    {
-       sData[i] = sData[i] + 1;
-    }
+
 
     //
     // Clear INT flag for this timer
@@ -284,8 +282,20 @@ __interrupt void epwm2ISR(void)
 {
     //
     // Update the CMPA and CMPB values
+    uint16_t i;
+
+    measure_sent_flg = 2;
+    for(i = 0; i < 2; i++)
+    {
+       sData[i] = 2;
+    }
+    // Send data
     //
-    //updateCompare(&epwm2Info);
+    for(i = 0; i < 2; i++)
+    {
+        SPI_writeDataNonBlocking(SPIB_BASE, sData[i]);
+        SPI_writeDataNonBlocking(SPIA_BASE, 1);
+    }
 
     //
     // Clear INT flag for this timer
@@ -332,8 +342,9 @@ __interrupt void epwm3ISR(void)
         rData[i] = SPI_readDataNonBlocking(SPIA_BASE);
     }
 
-    highbyte=rData[0];
-    lowbyte=rData[1];
+    measure_received_flg = measure_sent_flg;
+//    highbyte=rData[0];
+//    lowbyte=rData[1];
     //
     // Check received data
 
@@ -346,13 +357,18 @@ __interrupt void epwm3ISR(void)
  }
 
  // process the adc data from SPI port
-  void  ADCdataPros(void)
-  {
-          MrDataPoint= highbyte;
-          MrDataPoint = MrDataPoint<<8;
-          MrDataPoint= MrDataPoint | (lowbyte>>8) ;
-          MrDataPoint= MrDataPoint & 0X001fffff;
-  }
+uint32_t ADCdataPros(uint16_t rData[2])
+ {
+      uint16_t highbyte, lowbyte;
+      uint32_t MrDataPoint;
+      highbyte = rData[0];
+      lowbyte = rData[1];
+      MrDataPoint= highbyte;
+      MrDataPoint = MrDataPoint<<8;
+      MrDataPoint= MrDataPoint | (lowbyte>>8);
+      MrDataPoint= MrDataPoint & 0X001fffff;
+      return MrDataPoint;
+ }
 void configGPIOs(void)
 {
        // Configure GPIO0/1 , GPIO2/3, GPIO4/5, GPIO6/7 and as ePWM1A/1B, ePWM2A/2B,
